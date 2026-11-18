@@ -139,6 +139,7 @@ export const api = {
 
   // Assistant
   askAssistant: (data) => apiRequest('/assistant/query', { method: 'POST', body: JSON.stringify(data) }),
+  getAssistantModelInfo: () => apiRequest('/assistant/model-info'),
 
   // Import
   downloadImportTemplate: () => apiRequest('/import/template'),

@@ -263,6 +263,9 @@ class AssistantQueryRequest(BaseModel):
 class AssistantQueryResponse(BaseModel):
     answer: str
     intent: str
+    speech_act: Optional[str] = None
+    act_confidence: Optional[float] = None
+    nlp_model: Optional[str] = "DailyDialog NLP Act Classifier (87,170 samples)"
     data: Optional[Any] = None
     suggested_queries: List[str] = []
     timestamp: datetime = Field(default_factory=datetime.utcnow)

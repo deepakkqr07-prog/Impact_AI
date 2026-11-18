@@ -1,0 +1,27 @@
+{
+  "dataset_name": "DailyDialog Dataset (dailydialog-dataset-1st-january-2024.ipynb)",
+  "total_conversations": 11118,
+  "total_utterances": 87170,
+  "total_questions": 24974,
+  "validation_samples": 8069,
+  "accuracy": 0.748,
+  "question_precision": 0.8918,
+  "question_recall": 0.852,
+  "question_f1": 0.8715,
+  "speech_acts": [
+    "inform",
+    "question",
+    "directive",
+    "commissive"
+  ],
+  "domain_intents": [
+    "ML_MODEL_INFO",
+    "LOW_PROGRESS_QUERY",
+    "EXPERIENCING_DELAYS_QUERY",
+    "PROJECT_SUMMARY",
+    "COST_ESCALATION_REASONS",
+    "CRITICAL_ATTENTION_QUERY",
+    "HIGHEST_RISK_QUERY"
+  ],
+  "trained_at": "2026-11-18T06:15:01.675855"
+}
