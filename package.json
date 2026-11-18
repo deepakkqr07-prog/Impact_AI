@@ -1,0 +1,22 @@
+{
+  "name": "ip-watch-infrastructure-ai",
+  "version": "1.0.0",
+  "description": "AI-Powered Predictive Analytics and Early Warning System for Infrastructure Projects (Unified Frontend & Backend)",
+  "main": "run.py",
+  "scripts": {
+    "start": "python run.py",
+    "build": "npm --prefix frontend run build",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload"
+  },
+  "keywords": [
+    "infrastructure",
+    "predictive-analytics",
+    "machine-learning",
+    "fastapi",
+    "react",
+    "early-warning"
+  ],
+  "author": "IP-WATCH Development Team",
+  "license": "MIT"
+}
