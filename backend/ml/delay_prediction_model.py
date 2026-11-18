@@ -22,7 +22,10 @@ DELAY_FEATURES = [
 class ProjectDelayPredictor:
     def __init__(self):
         self.model = None
-        os.makedirs(MODEL_DIR, exist_ok=True)
+        try:
+            os.makedirs(MODEL_DIR, exist_ok=True)
+        except Exception:
+            pass
         self._load_or_train_model()
 
     def _generate_synthetic_historical_data(self, n_samples=600):
@@ -82,7 +85,10 @@ class ProjectDelayPredictor:
         )
         regressor.fit(X, y)
         self.model = regressor
-        joblib.dump(self.model, MODEL_PATH)
+        try:
+            joblib.dump(self.model, MODEL_PATH)
+        except Exception:
+            pass
 
     def extract_features(self, project) -> np.ndarray:
         start = project.planned_start_date
