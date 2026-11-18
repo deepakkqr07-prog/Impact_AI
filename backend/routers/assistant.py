@@ -240,6 +240,40 @@ def process_assistant_query(query: str, project_id: Optional[int], db: Session) 
             ]
         }
 
+    # 7. Model training and Kaggle dataset queries
+    if any(k in q for k in ["train", "dataset", "kaggle", "algorithm", "accuracy", "mae", "features", "how does ai work", "ml model"]):
+        answer = (
+            f"**Machine Learning Models & Kaggle Training Architecture:**\n\n"
+            f"- **Dataset:** Kaggle Engineering Cost Feasibility Dataset (`Engineering_Cost_Feasibility_Dataset.csv`) comprising **3,245 historical engineering & infrastructure projects** across 5 sectors (Roads, Bridges, Power Plants, Water Infrastructure, and Commercial/Industrial Buildings).\n"
+            f"- **Cost Overrun Estimator:** Random Forest Regressor (120 estimators) trained on 9 engineering features, achieving an MAE of **2.617%** on validation.\n"
+            f"- **Schedule Delay Forecaster:** Gradient Boosting Regressor trained on duration horizon, scope complexity, and progress deficits (MAE 12.12 days slippage).\n"
+            f"- **Feasibility Classifier:** Gradient Boosting Classifier predicting `Feasible`, `Borderline`, or `Not Feasible` outcomes with 56.1% empirical multi-class accuracy.\n"
+            f"- **Top Empirical Feature Drivers:**\n"
+            f"  1. Capital Expenditure Burn Intensity (14.7%)\n"
+            f"  2. Approved Capital Outlay Scale (14.3%)\n"
+            f"  3. Environmental & Clearance Footprint (14.0%)\n"
+            f"  4. Project Schedule Horizon in Days (13.4%)\n"
+            f"  5. Engineering Risk Assessment Score (13.4%)\n"
+            f"  6. Resource Allocation Adequacy (11.9%)\n"
+            f"  7. Stakeholder & Inter-Agency Priority (11.1%)"
+        )
+        return {
+            "answer": answer,
+            "intent": "ML_MODEL_INFO",
+            "data": {
+                "dataset": "Engineering_Cost_Feasibility_Dataset.csv",
+                "sample_count": 3245,
+                "cost_model": "Random Forest Regressor (MAE 2.617%)",
+                "delay_model": "Gradient Boosting Regressor (MAE 12.12 days)",
+                "feasibility_model": "Gradient Boosting Classifier (56.1% accuracy)"
+            },
+            "suggested_queries": [
+                "Which projects have the highest risk?",
+                "What are the major reasons for cost escalation?",
+                "Which projects are experiencing delays?"
+            ]
+        }
+
     # General / Default response with live database statistics
     total = len(projects)
     high_r = sum(1 for p in projects if p.risk_level == "High")

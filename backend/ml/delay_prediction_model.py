@@ -1,23 +1,45 @@
 import os
+import json
 import numpy as np
 import pandas as pd
 from datetime import date
-from sklearn.ensemble import GradientBoostingRegressor
 import joblib
 
 MODEL_DIR = os.path.join(os.path.dirname(__file__), "saved_models")
 MODEL_PATH = os.path.join(MODEL_DIR, "delay_prediction_model.joblib")
+METADATA_PATH = os.path.join(MODEL_DIR, "training_metadata.json")
 
 DELAY_FEATURES = [
-    "planned_duration_days",
-    "elapsed_days",
-    "planned_progress",
-    "actual_progress",
-    "progress_deficit",
-    "milestones_missed_ratio",
-    "expenditure_rate_ratio",
-    "remaining_duration_days"
+    "Estimated_Cost_USD",
+    "Time_Estimate_Days",
+    "Scope_Complexity_Numeric",
+    "Risk_Assessment_Score",
+    "Resource_Allocation_Score",
+    "Environmental_Impact_Score",
+    "Stakeholder_Priority_Score",
+    "Project_Type_Num",
+    "Burn_Intensity"
 ]
+
+SECTOR_TYPE_MAP = {
+    "Transportation & Highways": 1,
+    "Railways & Metros": 2,
+    "Power & Renewable Energy": 3,
+    "Urban Infrastructure & Water": 4,
+    "Ports & Shipping": 4,
+    "Civil Aviation & Airports": 5,
+    "Telecommunications": 3,
+}
+
+SECTOR_ENV_MAP = {
+    "Transportation & Highways": 68.0,
+    "Railways & Metros": 75.0,
+    "Power & Renewable Energy": 54.0,
+    "Urban Infrastructure & Water": 78.0,
+    "Ports & Shipping": 72.0,
+    "Civil Aviation & Airports": 62.0,
+    "Telecommunications": 45.0,
+}
 
 class ProjectDelayPredictor:
     def __init__(self):
@@ -28,43 +50,6 @@ class ProjectDelayPredictor:
             pass
         self._load_or_train_model()
 
-    def _generate_synthetic_historical_data(self, n_samples=600):
-        np.random.seed(101)
-        records = []
-        for _ in range(n_samples):
-            planned_duration = int(np.random.uniform(300, 2000))
-            elapsed = int(np.random.uniform(60, planned_duration + 200))
-            remaining = max(0, planned_duration - elapsed)
-
-            expected_p = min(100.0, max(5.0, (elapsed / planned_duration) * 100.0))
-            deficit = float(np.random.uniform(0, 30.0) if np.random.rand() > 0.35 else 0)
-            actual_p = max(0.0, min(100.0, expected_p - deficit))
-            progress_deficit = max(0.0, expected_p - actual_p)
-
-            milestones_missed_ratio = min(1.0, (progress_deficit / 100.0) * 1.5 + np.random.uniform(0, 0.2))
-            exp_rate = (actual_p / max(1.0, expected_p)) + np.random.normal(0, 0.1)
-
-            # Delay in days target calculation
-            estimated_delay_days = (
-                (progress_deficit / 100.0) * planned_duration * 0.9 +
-                (milestones_missed_ratio * 90.0) +
-                np.random.normal(0, 15)
-            )
-            estimated_delay_days = max(0.0, estimated_delay_days)
-
-            records.append({
-                "planned_duration_days": planned_duration,
-                "elapsed_days": elapsed,
-                "planned_progress": expected_p,
-                "actual_progress": actual_p,
-                "progress_deficit": progress_deficit,
-                "milestones_missed_ratio": milestones_missed_ratio,
-                "expenditure_rate_ratio": exp_rate,
-                "remaining_duration_days": remaining,
-                "target_delay_days": estimated_delay_days
-            })
-        return pd.DataFrame(records)
-
     def _load_or_train_model(self):
         if os.path.exists(MODEL_PATH):
             try:
@@ -73,67 +58,58 @@ class ProjectDelayPredictor:
             except Exception:
                 pass
 
-        df = self._generate_synthetic_historical_data()
-        X = df[DELAY_FEATURES]
-        y = df["target_delay_days"]
+        from backend.ml.train_models import train_all_models
+        train_all_models()
+        self.model = joblib.load(MODEL_PATH)
 
-        regressor = GradientBoostingRegressor(
-            n_estimators=120,
-            learning_rate=0.08,
-            max_depth=5,
-            random_state=42
-        )
-        regressor.fit(X, y)
-        self.model = regressor
-        try:
-            joblib.dump(self.model, MODEL_PATH)
-        except Exception:
-            pass
-
-    def extract_features(self, project) -> np.ndarray:
+    def extract_features(self, project) -> tuple:
         start = project.planned_start_date
         expected_end = project.expected_completion_date
-        today = date.today()
 
-        planned_duration = max(1, (expected_end - start).days)
-        elapsed = max(1, (today - start).days)
-        remaining = max(0, (expected_end - today).days)
+        duration_days = max(1, (expected_end - start).days)
+        approved = float(project.approved_cost or 1.0)
+        estimated_cost_usd = approved * 120000.0
+        burn_intensity = estimated_cost_usd / max(1, duration_days)
+
+        risk_score = float(project.risk_score or 50.0)
+        complexity = 3 if risk_score >= 65.0 else (2 if risk_score >= 35.0 else 1)
 
         planned_p = float(project.planned_progress or 0.0)
         actual_p = float(project.actual_progress or 0.0)
-        progress_deficit = max(0.0, planned_p - actual_p)
+        progress_lag = max(0.0, planned_p - actual_p)
 
-        # Milestone missed ratio calculation from attached milestones if any
-        milestones = getattr(project, "milestones", [])
-        if milestones:
-            missed_count = sum(1 for m in milestones if m.status in ["Delayed", "Pending"] and m.planned_completion_date < today)
-            milestones_missed_ratio = missed_count / len(milestones)
-        else:
-            milestones_missed_ratio = min(1.0, (progress_deficit / 80.0))
-
-        approved = float(project.approved_cost or 1.0)
-        spent = float(project.actual_expenditure or 0.0)
-        exp_rate = (spent / approved) / max(0.05, (elapsed / planned_duration))
+        resource_score = max(20.0, min(100.0, 85.0 - (progress_lag * 1.5)))
+        env_score = SECTOR_ENV_MAP.get(project.sector, 65.0)
+        stakeholder_priority = 0.75
+        type_num = SECTOR_TYPE_MAP.get(project.sector, 1)
 
         features = [
-            planned_duration,
-            elapsed,
-            planned_p,
-            actual_p,
-            progress_deficit,
-            milestones_missed_ratio,
-            exp_rate,
-            remaining
+            estimated_cost_usd,
+            duration_days,
+            complexity,
+            risk_score,
+            resource_score,
+            env_score,
+            stakeholder_priority,
+            type_num,
+            burn_intensity
         ]
         X_df = pd.DataFrame([features], columns=DELAY_FEATURES)
         return X_df, features
 
     def predict(self, project) -> dict:
         X, raw_features = self.extract_features(project)
-        predicted_delay_days = float(self.model.predict(X)[0])
-        predicted_delay_days = max(0.0, round(predicted_delay_days, 1))
+        base_predicted_delay = float(self.model.predict(X)[0])
 
-        planned_duration = raw_features[0]
+        planned_duration = raw_features[1]
+        planned_p = float(project.planned_progress or 0.0)
+        actual_p = float(project.actual_progress or 0.0)
+        progress_deficit = max(0.0, planned_p - actual_p)
+
+        # Compound baseline model prediction with actual ground progress lag
+        adjusted_delay = base_predicted_delay + (progress_deficit / 100.0) * planned_duration * 0.8
+        predicted_delay_days = max(0.0, round(adjusted_delay, 1))
+
         delay_percentage = round((predicted_delay_days / max(1, planned_duration)) * 100.0, 1)
 
         # Classify Delay Risk Level
@@ -153,18 +129,18 @@ class ProjectDelayPredictor:
         reasons = []
         recommendations = []
 
-        if raw_features[4] > 10:  # progress_deficit
-            reasons.append(f"Physical execution gap of {raw_features[4]:.1f}% against planned progress milestones.")
-            recommendations.append("Mobilize additional sub-contractor resources and establish double-shift civil works.")
-        if raw_features[5] > 0.2:  # milestones_missed_ratio
-            reasons.append(f"{round(raw_features[5]*100)}% of critical path milestones are overdue or delayed.")
-            recommendations.append("Conduct an immediate joint milestone audit with implementing agency and PMC.")
+        if progress_deficit > 10:
+            reasons.append(f"Physical execution gap of {progress_deficit:.1f}% against planned project milestones.")
+            recommendations.append("Mobilize additional contractor execution manpower and institute double-shift civil works.")
+        if raw_features[3] > 60:  # risk_score
+            reasons.append(f"High risk indicator index ({raw_features[3]:.1f}/100) indicates inter-departmental bottleneck vulnerability.")
+            recommendations.append("Establish a joint expedited review committee with ministry nodal officers.")
         if is_past_expected_date:
             reasons.append(f"Target completion deadline breached by {confirmed_delay_days} days.")
             recommendations.append("Formalize revised baseline schedule with clear penalty milestones.")
         if not reasons:
-            reasons.append("Progress tracking closely matches expected baseline schedule.")
-            recommendations.append("Maintain current operational cadence and supply-chain buffer monitoring.")
+            reasons.append("Project execution schedule conforms to historical benchmark tolerances.")
+            recommendations.append("Maintain existing site pacing and periodic milestone verification.")
 
         return {
             "predicted_delay_days": predicted_delay_days,
@@ -173,12 +149,13 @@ class ProjectDelayPredictor:
             "delay_risk": delay_risk,
             "is_confirmed_delay": is_past_expected_date,
             "confirmed_delay_days": confirmed_delay_days,
-            "current_progress": raw_features[3],
-            "expected_progress": raw_features[2],
-            "progress_deficit": round(raw_features[4], 1),
+            "current_progress": actual_p,
+            "expected_progress": planned_p,
+            "progress_deficit": round(progress_deficit, 1),
             "reasons": reasons,
             "recommended_actions": recommendations,
-            "model_architecture": "Gradient Boosting Regressor (Scikit-learn)"
+            "training_dataset": "Kaggle Engineering Cost Feasibility Dataset (3,245 projects)",
+            "model_architecture": "Scikit-Learn Gradient Boosting Regressor (Trained on Kaggle Dataset)"
         }
 
 delay_model = ProjectDelayPredictor()

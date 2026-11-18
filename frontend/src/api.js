@@ -99,6 +99,7 @@ export const api = {
   addProgressUpdate: (projectId, data) => apiRequest(`/projects/${projectId}/progress`, { method: 'POST', body: JSON.stringify(data) }),
 
   // Predictions & Risk
+  getModelInfo: () => apiRequest('/predictions/model-info'),
   getCostPredictions: (params = {}) => {
     const query = new URLSearchParams(params).toString();
     return apiRequest(`/predictions/cost${query ? `?${query}` : ''}`);

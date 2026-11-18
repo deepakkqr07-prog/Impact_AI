@@ -1,0 +1,64 @@
+{
+  "dataset_name": "Engineering_Cost_Feasibility_Dataset.csv (Kaggle)",
+  "sample_count": 3245,
+  "features_trained": [
+    "Estimated_Cost_USD",
+    "Time_Estimate_Days",
+    "Scope_Complexity_Numeric",
+    "Risk_Assessment_Score",
+    "Resource_Allocation_Score",
+    "Environmental_Impact_Score",
+    "Stakeholder_Priority_Score",
+    "Project_Type_Num",
+    "Burn_Intensity"
+  ],
+  "cost_model": {
+    "algorithm": "Random Forest Regressor",
+    "n_estimators": 120,
+    "mae_pct": 2.617,
+    "r2_score": -0.014,
+    "top_features": [
+      {
+        "feature": "Burn_Intensity",
+        "label": "Capital Expenditure Burn Intensity",
+        "importance_percentage": 14.7
+      },
+      {
+        "feature": "Estimated_Cost_USD",
+        "label": "Approved Capital Outlay Scale",
+        "importance_percentage": 14.3
+      },
+      {
+        "feature": "Environmental_Impact_Score",
+        "label": "Environmental & Clearance Footprint",
+        "importance_percentage": 14.0
+      },
+      {
+        "feature": "Time_Estimate_Days",
+        "label": "Project Schedule Horizon (Days)",
+        "importance_percentage": 13.4
+      },
+      {
+        "feature": "Risk_Assessment_Score",
+        "label": "Engineering Risk Assessment Score",
+        "importance_percentage": 13.4
+      }
+    ]
+  },
+  "delay_model": {
+    "algorithm": "Gradient Boosting Regressor",
+    "n_estimators": 100,
+    "mae_days": 12.12,
+    "r2_score": 0.466
+  },
+  "feasibility_model": {
+    "algorithm": "Gradient Boosting Classifier",
+    "accuracy": 0.561,
+    "classes": [
+      "Borderline",
+      "Feasible",
+      "Not Feasible"
+    ]
+  },
+  "trained_at": "2026-11-18T05:51:25.507904"
+}
